@@ -1,13 +1,16 @@
 #include <iostream>
 #include <rfb/rfb.h>
 #include "webcam.h"
-#include "fps.h"
 #include "keyboard.h"
 #include "mouse.h"
 
 #define CONTROLLER_PORT 19509
 #define CONTROLLER_IP "10.1.2.1"
 #define USE_CAMERA true
+#define FPS 30
+#define USE_DIFF_FRAMES false
+int diffThreshold = 1;
+int minContourArea = 100;
 #define MOUSE_BOX_SIZE 50
 #define LISTEN_PORT 5901
 #define CAMERA_LOCATION "/dev/video0"
@@ -17,14 +20,23 @@ static const struct Point res = {1280, 720};
 struct Point curPos = {};
 rfbScreenInfoPtr rfbScreen;
 
+#include <vector>
+#include <opencv2/opencv.hpp>
+
 #include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #define SA struct sockaddr
 #include <arpa/inet.h>
+#include <cstdlib>
 
 int sockfd1, sockfd2, sockfd3;
+
+struct Rect {
+    Point topLeftCorner;
+    Point bottomRightCorner;
+};
 
 void initSock(int* sockfd) {
     struct sockaddr_in servaddr, cli;
@@ -54,13 +66,9 @@ void initSock(int* sockfd) {
    
 }
 
-struct color {
-    unsigned char r,g,b;
-};
-
 static void initBuffer(unsigned char* buffer) {
-    struct color a = {0xff, 0x00, 0xff}; //magenta
-    struct color b = {0x00, 0x00, 0x00}; //black
+    Pixel a = {0xff, 0x00, 0xff}; //magenta
+    Pixel b = {0x00, 0x00, 0x00}; //black
     for (int row = 0; row < res.y; row++) {
         for (int col = 0; col < res.x; col++) {
             bool pos1 = row / 100 % 2 && !(col / 100 % 2);
@@ -92,6 +100,59 @@ static void cameraFrameToRfb(unsigned char* rfbBuffer, Frame* cameraFrame) {
         }
     }
 }
+
+int pixelDiff(Pixel* pixA, Pixel* pixB) {
+    int diffR = abs(int(pixA->r) - int(pixB->r));
+    int diffG = abs(int(pixA->g) - int(pixB->g));
+    int diffB = abs(int(pixA->b) - int(pixB->b));
+    return diffR + diffG + diffB;
+}
+
+std::vector<Rect> detectRectangles(const bool* boolArray, int rows, int cols, double minContourArea)
+{
+    // Create a binary matrix from the bool array
+    cv::Mat binaryMatrix(rows, cols, CV_8U);
+    for (int i = 0; i < rows; ++i)
+    {
+        for (int j = 0; j < cols; ++j)
+        {
+            binaryMatrix.at<uchar>(i, j) = boolArray[i * cols + j] ? 255 : 0;
+        }
+    }
+
+    std::vector<Rect> detectedRectangles;
+
+    // Apply contour detection
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(binaryMatrix, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    // Extract top-left and bottom-right corners of rectangles
+    for (const auto& contour : contours)
+    {
+        // Calculate contour area
+        double contourArea = cv::contourArea(contour);
+
+        // Filter contours based on minimum area threshold
+        if (contourArea >= minContourArea)
+        {
+            // Approximate contour to polygon
+            std::vector<cv::Point> approx;
+            cv::approxPolyDP(contour, approx, cv::arcLength(contour, true) * 0.02, true);
+
+            // Filter and extract rectangles
+            if (approx.size() == 4 && cv::isContourConvex(approx))
+            {
+                Point topLeft = { approx[0].x, approx[0].y };
+                Point bottomRight = { approx[2].x, approx[2].y };
+
+                detectedRectangles.push_back({ topLeft, bottomRight });
+            }
+        }
+    }
+
+    return detectedRectangles;
+}
+
 
 static void dokey(rfbBool down,rfbKeySym key,rfbClientPtr cl) {
     static struct ModifierKeys modKeys = {};
@@ -147,19 +208,19 @@ int main(int argc, char** argv) {
     initBuffer((unsigned char*)rfbScreen->frameBuffer);
     rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
     Webcam* w;
-    //buffer_t frame;
-    Frame frame(res.x, res.y);
+    Frame myFrame(res.x, res.y);
     if (USE_CAMERA) {
-        w = new Webcam(CAMERA_LOCATION, res.x, res.y, 60);
+        w = new Webcam(CAMERA_LOCATION, res.x, res.y, FPS);
 
         while (true) {
             if (w->isNewFrame()) { 
                 break;
             }
         }
-        frame = w->GetLastFrame();
-        cameraFrameToRfb((unsigned char*)rfbScreen->frameBuffer, &frame);
+        myFrame = w->GetLastFrame();
+        cameraFrameToRfb((unsigned char*)rfbScreen->frameBuffer, &myFrame);
     }
+    Frame oldFrame = myFrame;
 
     printf("Creating connections to controller on socket %s:%d...\n",CONTROLLER_IP, CONTROLLER_PORT);
     initSock(&sockfd1);
@@ -170,39 +231,50 @@ int main(int argc, char** argv) {
     rfbInitServer(rfbScreen);
 
     if (USE_CAMERA) {
-        int camUpsPerSect = 4;
-        int rfbFps = 15;
-        double sectSize = 16.0;
-        int fNum = 1;
-        int sectNum = 1;
+        rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
         while(rfbIsActive(rfbScreen)) {
-
-            if (true || TimeToTakePicture(camUpsPerSect * rfbFps * sectSize)) {
-                frame = w->GetLastFrame();
-                cameraFrameToRfb((unsigned char*)rfbScreen->frameBuffer, &frame);
+            if (w->isNewFrame()) {
+            	//Capture the most recent frame
+                myFrame = w->GetLastFrame();
+                cameraFrameToRfb((unsigned char*)rfbScreen->frameBuffer, &myFrame);
                 
-                if (fNum == camUpsPerSect) {
-                    //rfbMarkRectAsModified(rfbScreen, 0, 0, resX, resY);            
-                    rfbMarkRectAsModified(rfbScreen, 0, (sectNum - 1) * (res.y / sectSize), res.x, sectNum * (res.y / sectSize));
-                    if (sectNum == sectSize) {
-                        sectNum = 1;
-                    } else {
-                        sectNum++;
-                    }
-                    fNum = 1;
+                if (!USE_DIFF_FRAMES) {
+                    rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
                 } else {
-                    fNum++;
-                }
+                    //Draw the first box around the mouse
+                    int x1 = curPos.x - (MOUSE_BOX_SIZE / 2); if(x1 < 0) x1 = 0;
+                    int x2 = curPos.x + (MOUSE_BOX_SIZE / 2); if(x2 > res.x) x2 = res.x;
+                    int y1 = curPos.y - (MOUSE_BOX_SIZE / 2); if(y1 < 0) y1 = 0;
+                    int y2 = curPos.y + (MOUSE_BOX_SIZE / 2); if(y2 > res.y) y2 = res.y;
+                    rfbMarkRectAsModified(rfbScreen, x1, y1, x2, y2);                
 
-                int x1 = curPos.x - (MOUSE_BOX_SIZE / 2); if(x1 < 0) x1 = 0;
-                int x2 = curPos.x + (MOUSE_BOX_SIZE / 2); if(x2 > res.x) x2 = res.x;
-                int y1 = curPos.y - (MOUSE_BOX_SIZE / 2); if(y1 < 0) y1 = 0;
-                int y2 = curPos.y + (MOUSE_BOX_SIZE / 2); if(y2 > res.y) y2 = res.y;
-            
-                rfbMarkRectAsModified(rfbScreen, x1, y1, x2, y2);
+		    //Define an array of pixels that are different
+		    bool* diffArray = new bool[res.x * res.y];
+		    {
+		        int i = 0;
+                        for (int y = 0; y < res.y; y++) {
+                            for (int x = 0; x < res.x; x++) {
+                                diffArray[i] = (diffThreshold <= pixelDiff(&(myFrame.getPixel(x, y)), &(oldFrame.getPixel(x, y))));
+                                i++;
+                            }
+                        }
+                    }            
+
+                    //Use the diffArray to generate rectangles
+                    std::vector<Rect> detectedRectangles = detectRectangles(diffArray, res.y, res.x, minContourArea);
+		    delete[] diffArray;
+		
+                    //Mark the rectangles as changes for the VNC server
+                    for (const auto& rect : detectedRectangles) {
+                        rfbMarkRectAsModified(rfbScreen, rect.topLeftCorner.x, rect.topLeftCorner.y, rect.bottomRightCorner.x, rect.bottomRightCorner.y);
+                    }
+
+                    //Set the old frame for the next loop
+                    oldFrame = myFrame;
+                }
                 
                 rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
-            }
+            }                
         }
     } else {
         rfbRunEventLoop(rfbScreen,40000,FALSE);

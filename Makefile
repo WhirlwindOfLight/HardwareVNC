@@ -1,6 +1,6 @@
 CXX = clang++
 CXXFLAGS = -std=c++11 -I/usr/include/opencv4
-LDFLAGS = -L/usr/lib -lopencv_core -lvncserver -lopencv_videoio
+LDFLAGS = -L/usr/lib -lvncserver -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_videoio
 EXECUTABLE = hardwareVncServer
 
 all: $(EXECUTABLE)
