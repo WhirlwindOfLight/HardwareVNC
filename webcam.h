@@ -1,53 +1,54 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <fcntl.h>
+#ifndef WEBCAM_H
+#define WEBCAM_H
 
-#include <assert.h>
-#include <pthread.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <errno.h>
-#include <string.h>
-#include <unistd.h>
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <mutex>
 
-#include <linux/videodev2.h>
+struct Pixel {
+    unsigned char r, g, b;
+};
 
-#define CLEAR(x) memset(&(x), 0, sizeof(x))
+class Frame {
+public:
+    Frame(int width, int height);
 
-/**
- * Buffer structure
- */
-typedef struct buffer {
-    uint8_t *start;
-    size_t  length;
-} buffer_t;
+    int getWidth() const;
+    int getHeight() const;
 
-/**
- * Webcam structure
- */
-typedef struct webcam {
-    char            *name;
-    int             fd;
-    buffer_t        *buffers;
-    uint8_t         nbuffers;
+    Pixel& getPixel(int x, int y);
+    const Pixel& getPixel(int x, int y) const;
 
-    buffer_t        frame;
-    pthread_t       thread;
-    pthread_mutex_t mtx_frame;
+private:
+    int width;
+    int height;
+    std::vector<Pixel> pixels;
+};
 
-    uint16_t        width;
-    uint16_t        height;
-    uint8_t         colorspace;
+class Webcam {
+public:
+    Webcam(const std::string& dev, int resX, int resY, int fps);
+    ~Webcam();
 
-    char            formats[16][5];
-    bool            streaming;
-} webcam_t;
+    Frame GetLastFrame();
+    bool isNewFrame();
 
-webcam_t *webcam_open(const char *dev);
-void webcam_close(webcam_t *w);
-void webcam_resize(webcam_t *w, uint16_t width, uint16_t height);
-void webcam_stream(webcam_t *w, bool flag);
-buffer_t webcam_grab(webcam_t *w);
+private:
+    void Start();
+    void Stop();
+    void CaptureFrames();
+
+    std::string device;
+    int resolutionX;
+    int resolutionY;
+    int frameRate;
+    bool isRunning;
+    bool newFrameReady;
+    Frame currentFrame;
+    std::mutex frameMutex;
+    std::thread captureThread;
+};
+
+#endif // WEBCAM_H
