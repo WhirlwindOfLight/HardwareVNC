@@ -1,12 +1,13 @@
 #include <iostream>
 #include "mouse.h"
+#include "configVars.h"
 
 //constexpr std::uint8_t BYTES_PER_REL = 3;
 //constexpr std::uint8_t BYTES_PER_ABS = 5;
 constexpr std::uint8_t REL_SIG_BYTE = 6;
 constexpr std::uint8_t ABS_SIG_BYTE = 7;
 constexpr int W_PER_TICK = 10;
-constexpr bool USE_REL_MOUSE = false;
+//const bool USE_REL_MOUSE = ConfigVars::getBool("use-rel-mouse");
 
 struct MouseButton {
     bool left;
@@ -98,8 +99,8 @@ RelMouseBytes initRelMouseBytes(MouseButton onBtns, Point curPos, Point oldPos, 
 
 void myMouse(unsigned char* output[2], int btns, Point curPos, Point oldPos, Point maxPos) {
     MouseButton onBtns = btnMaskToStruct(btns);
-    RelMouseBytes rel = initRelMouseBytes(onBtns, curPos, oldPos, USE_REL_MOUSE);
-    AbsMouseBytes abs = initAbsMouseBytes(onBtns, curPos, maxPos, !USE_REL_MOUSE);
+    RelMouseBytes rel = initRelMouseBytes(onBtns, curPos, oldPos, ConfigVars::getBool("use-rel-mouse"));
+    AbsMouseBytes abs = initAbsMouseBytes(onBtns, curPos, maxPos, !ConfigVars::getBool("use-rel-mouse"));
 
     output[0][0] = BYTES_PER_REL * 2 + 1;
     output[0][1] = output[0][2] = output[0][3] = 0;

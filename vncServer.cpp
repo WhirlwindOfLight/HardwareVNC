@@ -3,34 +3,24 @@
 #include "webcam.h"
 #include "keyboard.h"
 #include "mouse.h"
-
-#define CONTROLLER_PORT 19509
-#define CONTROLLER_IP "10.1.2.1"
-#define USE_CAMERA true
-#define FPS 30
-#define USE_DIFF_FRAMES false
-int diffThreshold = 1;
-int minContourArea = 100;
-#define MOUSE_BOX_SIZE 50
-#define LISTEN_PORT 5901
-#define CAMERA_LOCATION "/dev/video0"
-#define RFB_BPP 4
-#define CAM_BPP 3
-static const struct Point res = {1280, 720};
-struct Point curPos = {};
-rfbScreenInfoPtr rfbScreen;
-
+#include "configVars.h"
 #include <vector>
 #include <opencv2/opencv.hpp>
-
+#include <fstream>
 #include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#define SA struct sockaddr
 #include <arpa/inet.h>
 #include <cstdlib>
 
+#define SA struct sockaddr
+#define RFB_BPP 4
+#define CAM_BPP 3
+
+Point res = {};
+Point curPos = {};
+rfbScreenInfoPtr rfbScreen;
 int sockfd1, sockfd2, sockfd3;
 
 struct Rect {
@@ -53,8 +43,8 @@ void initSock(int* sockfd) {
    
     // assign IP, PORT
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr(CONTROLLER_IP);
-    servaddr.sin_port = htons(CONTROLLER_PORT);
+    servaddr.sin_addr.s_addr = inet_addr(ConfigVars::getCString("controller-ip"));
+    servaddr.sin_port = htons(ConfigVars::getInt("controller-port"));
    
     // connect the client socket to server socket
     if (connect(*sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
@@ -133,7 +123,7 @@ std::vector<Rect> detectRectangles(const bool* boolArray, int rows, int cols, do
         double contourArea = cv::contourArea(contour);
 
         // Filter contours based on minimum area threshold
-        if (contourArea >= minContourArea)
+        if (contourArea >= ConfigVars::getInt("minContourArea"))
         {
             // Approximate contour to polygon
             std::vector<cv::Point> approx;
@@ -172,7 +162,7 @@ static void dokey(rfbBool down,rfbKeySym key,rfbClientPtr cl) {
         std::cout << std::endl;
         */
     }
-    if (!USE_CAMERA) rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
+    if (!ConfigVars::getBool("use-camera")) rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
 
 }
 
@@ -191,26 +181,33 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
     write(sockfd2, tempB, sizeof(tempB));
 
     oldPos = curPos;
-    if (!USE_CAMERA) rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
+    if (!ConfigVars::getBool("use-camera")) rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
 }
 
 int main(int argc, char** argv) {
+    if (argc != 2) {
+        std::cout << "Usage: " << argv[0] << " <configFile>" << std::endl;
+        return 1;
+    }
+    ConfigVars::load(argv[1]);
+    res = {ConfigVars::getInt("camera-resX"), ConfigVars::getInt("camera-resY")};
+
     rfbScreen = rfbGetScreen(&argc, argv, res.x, res.y, 8, 3, RFB_BPP);
     if (!rfbScreen)
         return 1;
-    rfbScreen->desktopName = "This is a test";
+    rfbScreen->desktopName = ConfigVars::getCString("desktop-name");
     rfbScreen->frameBuffer = (char*)malloc(res.x*res.y*RFB_BPP);
     rfbScreen->ptrAddEvent = doptr;
     rfbScreen->kbdAddEvent = dokey;
-    rfbScreen->port = LISTEN_PORT;
-    rfbScreen->ipv6port = LISTEN_PORT;
+    rfbScreen->port = ConfigVars::getInt("listen-port");
+    rfbScreen->ipv6port = ConfigVars::getInt("listen-port");
 
     initBuffer((unsigned char*)rfbScreen->frameBuffer);
     rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
     Webcam* w;
     Frame myFrame(res.x, res.y);
-    if (USE_CAMERA) {
-        w = new Webcam(CAMERA_LOCATION, res.x, res.y, FPS);
+    if (ConfigVars::getBool("use-camera")) {
+        w = new Webcam(ConfigVars::getString("camera-location"), res.x, res.y, ConfigVars::getInt("camera-fps"));
 
         while (true) {
             if (w->isNewFrame()) { 
@@ -222,15 +219,15 @@ int main(int argc, char** argv) {
     }
     Frame oldFrame = myFrame;
 
-    printf("Creating connections to controller on socket %s:%d...\n",CONTROLLER_IP, CONTROLLER_PORT);
+    std::cout << "Creating connections to controller on socket " << ConfigVars::getString("controller-ip") << ":" << ConfigVars::getInt("controller-port") << "..." << std::endl;
     initSock(&sockfd1);
     initSock(&sockfd2);
     initSock(&sockfd3);
-    printf("Connected to controller\n");
+    std::cout << "Connected to controller" << std::endl;
 
     rfbInitServer(rfbScreen);
 
-    if (USE_CAMERA) {
+    if (ConfigVars::getBool("use-camera")) {
         rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
         while(rfbIsActive(rfbScreen)) {
             if (w->isNewFrame()) {
@@ -238,14 +235,14 @@ int main(int argc, char** argv) {
                 myFrame = w->GetLastFrame();
                 cameraFrameToRfb((unsigned char*)rfbScreen->frameBuffer, &myFrame);
                 
-                if (!USE_DIFF_FRAMES) {
+                if (!ConfigVars::getBool("use-diff-frames")) {
                     rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
                 } else {
                     //Draw the first box around the mouse
-                    int x1 = curPos.x - (MOUSE_BOX_SIZE / 2); if(x1 < 0) x1 = 0;
-                    int x2 = curPos.x + (MOUSE_BOX_SIZE / 2); if(x2 > res.x) x2 = res.x;
-                    int y1 = curPos.y - (MOUSE_BOX_SIZE / 2); if(y1 < 0) y1 = 0;
-                    int y2 = curPos.y + (MOUSE_BOX_SIZE / 2); if(y2 > res.y) y2 = res.y;
+                    int x1 = curPos.x - (ConfigVars::getInt("mouse-box-size") / 2); if(x1 < 0) x1 = 0;
+                    int x2 = curPos.x + (ConfigVars::getInt("mouse-box-size") / 2); if(x2 > res.x) x2 = res.x;
+                    int y1 = curPos.y - (ConfigVars::getInt("mouse-box-size") / 2); if(y1 < 0) y1 = 0;
+                    int y2 = curPos.y + (ConfigVars::getInt("mouse-box-size") / 2); if(y2 > res.y) y2 = res.y;
                     rfbMarkRectAsModified(rfbScreen, x1, y1, x2, y2);                
 
 		    //Define an array of pixels that are different
@@ -254,14 +251,14 @@ int main(int argc, char** argv) {
 		        int i = 0;
                         for (int y = 0; y < res.y; y++) {
                             for (int x = 0; x < res.x; x++) {
-                                diffArray[i] = (diffThreshold <= pixelDiff(&(myFrame.getPixel(x, y)), &(oldFrame.getPixel(x, y))));
+                                diffArray[i] = (ConfigVars::getInt("diffThreshold") <= pixelDiff(&(myFrame.getPixel(x, y)), &(oldFrame.getPixel(x, y))));
                                 i++;
                             }
                         }
                     }            
 
                     //Use the diffArray to generate rectangles
-                    std::vector<Rect> detectedRectangles = detectRectangles(diffArray, res.y, res.x, minContourArea);
+                    std::vector<Rect> detectedRectangles = detectRectangles(diffArray, res.y, res.x, ConfigVars::getInt("minContourArea"));
 		    delete[] diffArray;
 		
                     //Mark the rectangles as changes for the VNC server
@@ -284,7 +281,7 @@ int main(int argc, char** argv) {
     close(sockfd2);
     close(sockfd3);
 
-    if (USE_CAMERA) {
+    if (ConfigVars::getBool("use-camera")) {
     	delete w;
     }
     free(rfbScreen->frameBuffer);
