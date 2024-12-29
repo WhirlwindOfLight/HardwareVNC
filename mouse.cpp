@@ -31,8 +31,13 @@ struct RelMouseBytes {
     std::uint8_t y;
 };
 
-int toBitPercent(int in, int max) {
-    return static_cast<double>(in) / max * 32767;
+int toBitPercent(long in, int max) {
+    // We need to shift the range from 0-[MAX_PIXEL - 1]
+    // to 1-32767; (max - 1) accounts for the max being above the
+    // actual max pixel value, while subtracting the 1 from 32767
+    // and adding it back in at the end shifts the range from
+    // 0-32766 to 1-32767
+    return (in * (32767 - 1)) / (max - 1) + 1;
 }
 
 MouseButton btnMaskToStruct(int btns) {
@@ -64,8 +69,10 @@ MouseButton btnMaskToStruct(int btns) {
 AbsMouseBytes initAbsMouseBytes(MouseButton onBtns, Point myPoint, Point max, bool calcPoint) {
     AbsMouseBytes temp = {};
     if (calcPoint) {
-        temp.bigX = (toBitPercent(myPoint.x, max.x) / 256);
-        temp.littleX = (toBitPercent(myPoint.x, max.x) % 256);
+        // For some reason max.x is off by 1 compared to max.y, so we have
+        // to do a subtraction to bring them back together
+        temp.bigX = (toBitPercent(myPoint.x, max.x - 1) / 256);
+        temp.littleX = (toBitPercent(myPoint.x, max.x - 1) % 256);
         temp.bigY = (toBitPercent(myPoint.y, max.y) / 256);
         temp.littleY = (toBitPercent(myPoint.y, max.y) % 256);
     } else {
@@ -119,8 +126,8 @@ void myMouse(unsigned char* output[2], int btns, Point curPos, Point oldPos, Poi
     output[1][7] = abs.littleY;
     output[1][8] = abs.bigY;
     output[1][9] = abs.wheel; 
-    output[1][10] = output[1][11] = output[1][12] = output[1][13] = 0;
-    output[1][14] = abs.wheel;
+    output[1][10] = output[1][11] = output[1][12] = output[1][13] = output[1][14] = 0;
+    //output[1][14] = abs.wheel;
 
     // tempC[0] = tempA;
     // tempC[1] = tempB;
