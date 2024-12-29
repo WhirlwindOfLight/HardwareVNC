@@ -221,8 +221,9 @@ int main(int argc, char** argv) {
 
     std::cout << "Creating connections to controller on socket " << ConfigVars::getString("controller-ip") << ":" << ConfigVars::getInt("controller-port") << "..." << std::endl;
     initSock(&sockfd1);
-    initSock(&sockfd2);
-    initSock(&sockfd3);
+    sockfd3 = sockfd2 = sockfd1;
+    //initSock(&sockfd2);
+    //initSock(&sockfd3);
     std::cout << "Connected to controller" << std::endl;
 
     rfbInitServer(rfbScreen);
