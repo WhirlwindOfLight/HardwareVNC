@@ -1,11 +1,10 @@
-#include <iostream>
 #include "mouse.h"
 #include "configVars.h"
 
-//constexpr std::uint8_t BYTES_PER_REL = 3;
-//constexpr std::uint8_t BYTES_PER_ABS = 5;
-constexpr std::uint8_t REL_SIG_BYTE = 6;
-constexpr std::uint8_t ABS_SIG_BYTE = 7;
+//constexpr Byte BYTES_PER_REL = 3;
+//constexpr Byte BYTES_PER_ABS = 5;
+constexpr Byte REL_SIG_BYTE = 6;
+constexpr Byte ABS_SIG_BYTE = 7;
 constexpr int W_PER_TICK = 10;
 //const bool USE_REL_MOUSE = ConfigVars::getBool("use-rel-mouse");
 
@@ -18,17 +17,17 @@ struct MouseButton {
 };
 
 struct AbsMouseBytes {
-    std::uint8_t bigX;
-    std::uint8_t littleX;
-    std::uint8_t bigY;
-    std::uint8_t littleY;
-    std::uint8_t wheel;
+    Byte bigX;
+    Byte littleX;
+    Byte bigY;
+    Byte littleY;
+    Byte wheel;
 };
 
 struct RelMouseBytes {
-    std::uint8_t button;
-    std::uint8_t x;
-    std::uint8_t y;
+    Byte button;
+    Byte x;
+    Byte y;
 };
 
 int toBitPercent(long in, int max) {
@@ -133,10 +132,10 @@ void myMouse(unsigned char* output[2], int btns, Point curPos, Point oldPos, Poi
     // tempC[1] = tempB;
 
     /*
-    std::cout << std::endl;
+    cout << endl;
     for (int i = 0; i < BYTES_PER_REL * 2 + 5; i++) {
-        std::cout << "0x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(tempC[0][i]) << " ";
+        cout << "0x" << hex << std::setw(2) << std::setfill('0') << static_cast<int>(tempC[0][i]) << " ";
     }
-    std::cout << std::endl;
+    cout << endl;
     */
 }

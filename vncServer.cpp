@@ -1,10 +1,8 @@
-#include <iostream>
 #include <rfb/rfb.h>
 #include "webcam.h"
 #include "keyboard.h"
 #include "mouse.h"
 #include "configVars.h"
-#include <vector>
 #include <opencv2/opencv.hpp>
 #include <fstream>
 #include <netdb.h>
@@ -12,7 +10,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <cstdlib>
 
 #define SA struct sockaddr
 #define RFB_BPP 4
@@ -34,11 +31,11 @@ void initSock(int* sockfd) {
     // socket create and verification
     *sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (*sockfd == -1) {
-        std::cout << "socket creation failed..." << std::endl;
+        cout << "socket creation failed..." << endl;
         exit(0);
     }
     else
-        //std::cout << "Socket successfully created.." << std::endl;
+        //cout << "Socket successfully created.." << endl;
     bzero(&servaddr, sizeof(servaddr));
    
     // assign IP, PORT
@@ -48,11 +45,11 @@ void initSock(int* sockfd) {
    
     // connect the client socket to server socket
     if (connect(*sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
-        std::cout << "a connection with the controller server failed..." << std::endl;
+        cout << "a connection with the controller server failed..." << endl;
         exit(0);
     }
     //else
-        //std::cout << "connected to the server.." << std::endl;
+        //cout << "connected to the server.." << endl;
    
 }
 
@@ -98,7 +95,7 @@ int pixelDiff(Pixel* pixA, Pixel* pixB) {
     return diffR + diffG + diffB;
 }
 
-std::vector<Rect> detectRectangles(const bool* boolArray, int rows, int cols, double minContourArea)
+vector<Rect> detectRectangles(const bool* boolArray, int rows, int cols, double minContourArea)
 {
     // Create a binary matrix from the bool array
     cv::Mat binaryMatrix(rows, cols, CV_8U);
@@ -110,10 +107,10 @@ std::vector<Rect> detectRectangles(const bool* boolArray, int rows, int cols, do
         }
     }
 
-    std::vector<Rect> detectedRectangles;
+    vector<Rect> detectedRectangles;
 
     // Apply contour detection
-    std::vector<std::vector<cv::Point>> contours;
+    vector<vector<cv::Point>> contours;
     cv::findContours(binaryMatrix, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
     // Extract top-left and bottom-right corners of rectangles
@@ -126,7 +123,7 @@ std::vector<Rect> detectRectangles(const bool* boolArray, int rows, int cols, do
         if (contourArea >= ConfigVars::getInt("minContourArea"))
         {
             // Approximate contour to polygon
-            std::vector<cv::Point> approx;
+            vector<cv::Point> approx;
             cv::approxPolyDP(contour, approx, cv::arcLength(contour, true) * 0.02, true);
 
             // Filter and extract rectangles
@@ -155,11 +152,11 @@ static void dokey(rfbBool down,rfbKeySym key,rfbClientPtr cl) {
         write(sockfd3, output, sizeof(output));
 
         /*
-        std::cout << std::endl;
+        cout << endl;
         for (int i = 0; i < BYTES_PER_KEY * 2 + 5; i++) {
-            std::cout << "0x" << std::hex << (int)output[i] << " ";
+            cout << "0x" << hex << (int)output[i] << " ";
         }
-        std::cout << std::endl;
+        cout << endl;
         */
     }
     if (!ConfigVars::getBool("use-camera"))
@@ -188,7 +185,7 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
 
 int main(int argc, char** argv) {
     if (argc != 2) {
-        std::cout << "Usage: " << argv[0] << " <configFile>" << std::endl;
+        cout << "Usage: " << argv[0] << " <configFile>" << endl;
         return 1;
     }
     ConfigVars::load(argv[1]);
@@ -226,12 +223,12 @@ int main(int argc, char** argv) {
     }
     Frame oldFrame = myFrame;
 
-    std::cout << "Creating connections to controller on socket " << ConfigVars::getString("controller-ip") << ":" << ConfigVars::getInt("controller-port") << "..." << std::endl;
+    cout << "Creating connections to controller on socket " << ConfigVars::getString("controller-ip") << ":" << ConfigVars::getInt("controller-port") << "..." << endl;
     initSock(&sockfd1);
     sockfd3 = sockfd2 = sockfd1;
     //initSock(&sockfd2);
     //initSock(&sockfd3);
-    std::cout << "Connected to controller" << std::endl;
+    cout << "Connected to controller" << endl;
 
     rfbInitServer(rfbScreen);
 
@@ -271,7 +268,7 @@ int main(int argc, char** argv) {
                     }            
 
                     //Use the diffArray to generate rectangles
-                    std::vector<Rect> detectedRectangles = detectRectangles(diffArray, res.y, res.x, ConfigVars::getInt("minContourArea"));
+                    vector<Rect> detectedRectangles = detectRectangles(diffArray, res.y, res.x, ConfigVars::getInt("minContourArea"));
                     delete[] diffArray;
 		
                     //Mark the rectangles as changes for the VNC server

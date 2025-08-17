@@ -1,9 +1,8 @@
-#include <cstdint>
 #include <rfb/rfb.h>
 #include <rfb/keysym.h>
 #include "keyboard.h"
 
-void myKeyboard(std::uint8_t output[], std::uint8_t modKeyByte, std::uint8_t regKeyByte) {
+void myKeyboard(Byte output[], Byte modKeyByte, Byte regKeyByte) {
     output[0] = BYTES_PER_KEY * 2 + 1;
     output[1] = output[2] = output[3] = 0;
     output[4] = KEY_SIG_BYTE;
@@ -37,7 +36,7 @@ bool parseModKeys(ModifierKeys* modKeysPtr, rfbBool down, rfbKeySym key) {
     }
 }
 
-std::uint8_t modKeyToByte(ModifierKeys modKeys, bool needsShift) {
+Byte modKeyToByte(ModifierKeys modKeys, bool needsShift) {
     return modKeys.ctrl
         + (2 * (modKeys.shift || needsShift))
         + (4 * modKeys.alt)
@@ -83,7 +82,7 @@ bool needsShift(rfbKeySym key) {
     }
 }
 
-std::uint8_t keyToByte(rfbKeySym key) {
+Byte keyToByte(rfbKeySym key) {
     if (key >= 33 && key <= 126) {
         // a-z + A-Z is 0x04-0x1D
         for (int i = 0; i < 26; i++) {

@@ -18,7 +18,7 @@ const Pixel& Frame::getPixel(int x, int y) const {
     return pixels[y * width + x];
 }
 
-Webcam::Webcam(const std::string& dev, int resX, int resY, int fps)
+Webcam::Webcam(const string& dev, int resX, int resY, int fps)
     : device(dev), resolutionX(resX), resolutionY(resY), frameRate(fps), isRunning(false), newFrameReady(false), currentFrame(resX, resY) {
     Start();
 }
@@ -28,18 +28,18 @@ Webcam::~Webcam() {
 }
 
 Frame Webcam::GetLastFrame() {
-    std::lock_guard<std::mutex> lock(frameMutex);
+    lock_guard<mutex> lock(frameMutex);
     return currentFrame;
 }
 
 bool Webcam::isNewFrame() {
-    std::lock_guard<std::mutex> lock(frameMutex);
+    lock_guard<mutex> lock(frameMutex);
     return newFrameReady;
 }
 
 void Webcam::Start() {
     isRunning = true;
-    captureThread = std::thread(&Webcam::CaptureFrames, this);
+    captureThread = thread(&Webcam::CaptureFrames, this);
 }
 
 void Webcam::Stop() {
@@ -51,7 +51,7 @@ void Webcam::Stop() {
 void Webcam::CaptureFrames() {
     cv::VideoCapture capture(device);
     if (!capture.isOpened()) {
-        std::cerr << "Failed to open camera: " << device << std::endl;
+        cerr << "Failed to open camera: " << device << endl;
         return;
     }
 
@@ -60,7 +60,7 @@ void Webcam::CaptureFrames() {
 
     Frame frame(resolutionX, resolutionY);
     while (isRunning) {
-        auto startTime = std::chrono::steady_clock::now();
+        auto startTime = steady_clock::now();
 
         cv::Mat cvFrame;
         capture.read(cvFrame);
@@ -77,14 +77,14 @@ void Webcam::CaptureFrames() {
         }
 
         {
-            std::lock_guard<std::mutex> lock(frameMutex);
+            lock_guard<mutex> lock(frameMutex);
             newFrameReady = true;
             currentFrame = frame;
         }
 
-        auto elapsedTime = std::chrono::steady_clock::now() - startTime;
-        auto sleepDuration = std::chrono::milliseconds(1000 / frameRate) - elapsedTime;
-        if (sleepDuration > std::chrono::milliseconds::zero())
+        auto elapsedTime = steady_clock::now() - startTime;
+        auto sleepDuration = milliseconds(1000 / frameRate) - elapsedTime;
+        if (sleepDuration > milliseconds::zero())
             std::this_thread::sleep_for(sleepDuration);
     }
 

@@ -2,10 +2,7 @@
 #define WEBCAM_H
 
 #include <opencv2/opencv.hpp>
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <mutex>
+#include "stdDecls.h"
 
 struct Pixel {
     unsigned char r, g, b;
@@ -24,12 +21,12 @@ public:
 private:
     int width;
     int height;
-    std::vector<Pixel> pixels;
+    vector<Pixel> pixels;
 };
 
 class Webcam {
 public:
-    Webcam(const std::string& dev, int resX, int resY, int fps);
+    Webcam(const string& dev, int resX, int resY, int fps);
     ~Webcam();
 
     Frame GetLastFrame();
@@ -40,15 +37,15 @@ private:
     void Stop();
     void CaptureFrames();
 
-    std::string device;
+    string device;
     int resolutionX;
     int resolutionY;
     int frameRate;
     bool isRunning;
     bool newFrameReady;
     Frame currentFrame;
-    std::mutex frameMutex;
-    std::thread captureThread;
+    mutex frameMutex;
+    thread captureThread;
 };
 
 #endif // WEBCAM_H

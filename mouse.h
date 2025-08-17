@@ -1,10 +1,10 @@
 #ifndef MOUSE_H
 #define MOUSE_H
 
-#include <cstdint>
+#include "stdDecls.h"
 
-constexpr std::uint8_t BYTES_PER_REL = 3;
-constexpr std::uint8_t BYTES_PER_ABS = 5;
+constexpr Byte BYTES_PER_REL = 3;
+constexpr Byte BYTES_PER_ABS = 5;
 
 struct Point {
     int x, y;
