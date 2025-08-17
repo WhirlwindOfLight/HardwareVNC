@@ -162,7 +162,8 @@ static void dokey(rfbBool down,rfbKeySym key,rfbClientPtr cl) {
         std::cout << std::endl;
         */
     }
-    if (!ConfigVars::getBool("use-camera")) rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
+    if (!ConfigVars::getBool("use-camera"))
+        rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
 
 }
 
@@ -181,7 +182,8 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
     write(sockfd2, tempB, sizeof(tempB));
 
     oldPos = curPos;
-    if (!ConfigVars::getBool("use-camera")) rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
+    if (!ConfigVars::getBool("use-camera"))
+        rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
 }
 
 int main(int argc, char** argv) {
@@ -207,7 +209,12 @@ int main(int argc, char** argv) {
     Webcam* w;
     Frame myFrame(res.x, res.y);
     if (ConfigVars::getBool("use-camera")) {
-        w = new Webcam(ConfigVars::getString("camera-location"), res.x, res.y, ConfigVars::getInt("camera-fps"));
+        w = new Webcam(
+            ConfigVars::getString("camera-location"),
+            res.x,
+            res.y,
+            ConfigVars::getInt("camera-fps")
+        );
 
         while (true) {
             if (w->isNewFrame()) { 
@@ -246,13 +253,18 @@ int main(int argc, char** argv) {
                     int y2 = curPos.y + (ConfigVars::getInt("mouse-box-size") / 2); if(y2 > res.y) y2 = res.y;
                     rfbMarkRectAsModified(rfbScreen, x1, y1, x2, y2);                
 
-		    //Define an array of pixels that are different
-		    bool* diffArray = new bool[res.x * res.y];
-		    {
-		        int i = 0;
+                    //Define an array of pixels that are different
+                    bool* diffArray = new bool[res.x * res.y];
+                    {
+                        int i = 0;
                         for (int y = 0; y < res.y; y++) {
                             for (int x = 0; x < res.x; x++) {
-                                diffArray[i] = (ConfigVars::getInt("diffThreshold") <= pixelDiff(&(myFrame.getPixel(x, y)), &(oldFrame.getPixel(x, y))));
+                                diffArray[i] = (
+                                    ConfigVars::getInt("diffThreshold") <= pixelDiff(
+                                        &(myFrame.getPixel(x, y)),
+                                        &(oldFrame.getPixel(x, y))
+                                    )
+                                );
                                 i++;
                             }
                         }
@@ -260,7 +272,7 @@ int main(int argc, char** argv) {
 
                     //Use the diffArray to generate rectangles
                     std::vector<Rect> detectedRectangles = detectRectangles(diffArray, res.y, res.x, ConfigVars::getInt("minContourArea"));
-		    delete[] diffArray;
+                    delete[] diffArray;
 		
                     //Mark the rectangles as changes for the VNC server
                     for (const auto& rect : detectedRectangles) {
