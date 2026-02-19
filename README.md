@@ -23,7 +23,7 @@ Binaries are currently not officially distributed for this program, so it will n
 4. Connect to the server with any VNC client software using `listen-port` as defined in your config file
 
 ## Licensing
-All past, present, and future code in this repository is licensed with GPLv3 as of Febuary 17, 2026 (see [LICENSE](LICENSE) for more details). In addition, when compiled, the code links against the following libraries with their associated licenses:
+All current and prior code in this repository is licensed under the terms of the GNU General Public License v3.0 (GPL-3.0-only) as of February 17, 2026, and all future changes will be released under the same terms unless otherwise stated (see [LICENSE](LICENSE) for more details). In addition, when compiled, the code links against the following libraries with their associated licenses:
 * [yaml-cpp](https://github.com/jbeder/yaml-cpp) (MIT)
 * [opencv](https://github.com/opencv/opencv) (Apache-2.0)
-* [libvncserver](https://github.com/LibVNC/libvncserver) (GPLv2+)
+* [libvncserver](https://github.com/LibVNC/libvncserver) (GPL-2.0-or-later)
