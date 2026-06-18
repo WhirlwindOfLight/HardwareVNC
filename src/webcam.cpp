@@ -49,7 +49,7 @@ void Webcam::Stop() {
 }
 
 void Webcam::CaptureFrames() {
-    cv::VideoCapture capture(device);
+    cv::VideoCapture capture(device, cv::CAP_V4L2);
     if (!capture.isOpened()) {
         cerr << "Failed to open camera: " << device << endl;
         return;
