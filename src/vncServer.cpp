@@ -183,12 +183,53 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
         rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
 }
 
-int main(int argc, char** argv) {
-    if (argc != 2) {
-        cout << "Usage: " << argv[0] << " <configFile>" << endl;
-        return 1;
+fs::path getDefaultConfigPath(const char* programName) {
+    fs::path config_dir;
+
+    bool autoResolveFailed = false;
+#if defined(__APPLE__) && defined(__MACH__)
+    // --- MACOS ---
+    const char* home = std::getenv("HOME");
+    if (home) {
+        // Apple's official standard for application data
+        config_dir = fs::path(home) / "Library" / "Application Support";
+    } else {
+        autoResolveFailed = true;
     }
-    ConfigVars::load(argv[1]);
+
+#else
+    // --- LINUX & UNIX (XDG Standard) ---
+    const char* xdg_config_home = std::getenv("XDG_CONFIG_HOME");
+    if (xdg_config_home && *xdg_config_home) {
+        config_dir = fs::path(xdg_config_home);
+    } else {
+        const char* home = std::getenv("HOME");
+        if (home) {
+            config_dir = fs::path(home) / ".config";
+        } else {
+            autoResolveFailed = true;
+        }
+    }
+#endif
+
+    if (autoResolveFailed) {
+        std::cerr << "[Warn] Could not resolve HOME. Loading config.yaml from current directory." << std::endl;
+        return fs::current_path() / "config.yaml";
+    } else {
+        return config_dir / programName / "config.yaml";
+    }
+}
+
+int main(int argc, char** argv) {
+    auto programName = argv[0];
+    if (argc > 2) {
+        cout << "Usage: " << programName << " <configFile>" << endl;
+        return 1;
+    } else if (argc == 2) {
+        ConfigVars::load(argv[1]);
+    } else {
+        ConfigVars::load(getDefaultConfigPath(programName));
+    }
     res = {ConfigVars::getInt("camera-resX"), ConfigVars::getInt("camera-resY")};
 
     rfbScreen = rfbGetScreen(&argc, argv, res.x, res.y, 8, 3, RFB_BPP);

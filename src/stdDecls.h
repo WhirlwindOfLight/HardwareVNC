@@ -7,6 +7,8 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <filesystem>
+#include <cstdlib>
 
 using std::cout;
 using std::cerr;
@@ -27,3 +29,5 @@ using std::chrono::milliseconds;
 using std::mutex;
 using std::lock_guard;
 using std::thread;
+
+namespace fs = std::filesystem;
