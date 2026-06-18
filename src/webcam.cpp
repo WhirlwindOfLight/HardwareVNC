@@ -37,6 +37,10 @@ bool Webcam::isNewFrame() {
     return newFrameReady;
 }
 
+bool Webcam::getIsRunning() {
+    return isRunning;
+}
+
 void Webcam::Start() {
     isRunning = true;
     captureThread = thread(&Webcam::CaptureFrames, this);
@@ -49,10 +53,13 @@ void Webcam::Stop() {
 }
 
 void Webcam::CaptureFrames() {
-    cv::VideoCapture capture(device, cv::CAP_V4L2);
+    cv::VideoCapture capture(device);
     if (!capture.isOpened()) {
-        cerr << "Failed to open camera: " << device << endl;
+        cerr << "[Err] Failed to open camera: " << device << endl;
+        isRunning = false;
         return;
+    } else {
+        cout << "Successfully opened camera: " << device << endl;
     }
 
     capture.set(cv::CAP_PROP_FRAME_WIDTH, resolutionX);
@@ -88,5 +95,7 @@ void Webcam::CaptureFrames() {
             std::this_thread::sleep_for(sleepDuration);
     }
 
+    cout << "[!] Camera capture thread loop ended" << endl;
+    isRunning = false;
     capture.release();
 }

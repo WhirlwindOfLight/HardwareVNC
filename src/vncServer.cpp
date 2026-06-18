@@ -214,6 +214,10 @@ int main(int argc, char** argv) {
         );
 
         while (true) {
+            if (!w->getIsRunning()) {
+                cerr << "[Err] Camera stopped before initial frame" << endl;
+                return 1;
+            }
             if (w->isNewFrame()) { 
                 break;
             }
@@ -232,9 +236,15 @@ int main(int argc, char** argv) {
 
     rfbInitServer(rfbScreen);
 
+    int returnCode = 0;
     if (ConfigVars::getBool("use-camera")) {
         rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
         while(rfbIsActive(rfbScreen)) {
+            if (!w->getIsRunning()) {
+                cerr << "[Err] Camera stopped before planned shutdown" << endl;
+                returnCode = 1;
+                break;
+            }
             if (w->isNewFrame()) {
             	//Capture the most recent frame
                 myFrame = w->GetLastFrame();
@@ -297,5 +307,5 @@ int main(int argc, char** argv) {
     free(rfbScreen->frameBuffer);
     rfbScreenCleanup(rfbScreen);
 
-    return 0;
+    return returnCode;
 }

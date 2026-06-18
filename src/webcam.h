@@ -31,6 +31,7 @@ public:
 
     Frame GetLastFrame();
     bool isNewFrame();
+    bool getIsRunning();
 
 private:
     void Start();
