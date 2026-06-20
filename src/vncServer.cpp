@@ -149,16 +149,15 @@ static void dokey(rfbBool down,rfbKeySym key,rfbClientPtr cl) {
         unsigned char kbdBuffer[BYTES_PER_KEY * 2 + 5];
         unsigned char modByte = modKeyToByte(modKeys, needsShift(key));
         myKeyboard(kbdBuffer, modByte, regByte);
-
-        write(controllerSocket, kbdBuffer, sizeof(kbdBuffer));
-
-        /*
-        cout << endl;
-        for (int i = 0; i < BYTES_PER_KEY * 2 + 5; i++) {
-            cout << "0x" << hex << (int)kbdBuffer[i] << " ";
+        if (ConfigVars::getBool("use-controller")) {
+            write(controllerSocket, kbdBuffer, sizeof(kbdBuffer));
+        } else {
+            cout << "[KBD] ";
+            for (int i = 0; i < BYTES_PER_KEY * 2 + 5; i++) {
+                cout << "0x" << hex << (int)kbdBuffer[i] << " ";
+            }
+            cout << endl;
         }
-        cout << endl;
-        */
     }
     if (!ConfigVars::getBool("use-camera"))
         rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
@@ -176,8 +175,20 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
     unsigned char* mouseBuffer[] = {relBuffer, absBuffer};
 
     myMouse(mouseBuffer, buttonMask, curPos, oldPos, res);
-    write(controllerSocket, relBuffer, sizeof(relBuffer));
-    write(controllerSocket, absBuffer, sizeof(absBuffer));
+    if (ConfigVars::getBool("use-controller")) {
+        write(controllerSocket, relBuffer, sizeof(relBuffer));
+        write(controllerSocket, absBuffer, sizeof(absBuffer));
+    } else {
+        cout << "[REL] ";
+        for (int i = 0; i < BYTES_PER_REL * 2 + 5; i++) {
+            cout << "0x" << hex << (int)relBuffer[i] << " ";
+        }
+        cout << endl << "[ABS] ";
+        for (int i = 0; i < BYTES_PER_ABS * 2 + 5; i++) {
+            cout << "0x" << hex << (int)absBuffer[i] << " ";
+        }
+        cout << endl;
+    }
 
     oldPos = curPos;
     if (!ConfigVars::getBool("use-camera"))
@@ -268,9 +279,11 @@ int main(int argc, char** argv) {
     }
     Frame oldFrame = myFrame;
 
-    cout << "Creating connections to controller on socket " << ConfigVars::getString("controller-ip") << ":" << ConfigVars::getInt("controller-port") << "..." << endl;
-    initSock(&controllerSocket);
-    cout << "Connected to controller" << endl;
+    if (ConfigVars::getBool("use-controller")) {
+        cout << "Creating connections to controller on socket " << ConfigVars::getString("controller-ip") << ":" << ConfigVars::getInt("controller-port") << "..." << endl;
+        initSock(&controllerSocket);
+        cout << "Connected to controller" << endl;
+    }
 
     rfbInitServer(rfbScreen);
 
@@ -335,7 +348,9 @@ int main(int argc, char** argv) {
         rfbRunEventLoop(rfbScreen,40000,FALSE);
     }
 
-    close(controllerSocket);
+    if (ConfigVars::getBool("use-controller")) {
+        close(controllerSocket);
+    }
 
     if (ConfigVars::getBool("use-camera")) {
     	delete w;
