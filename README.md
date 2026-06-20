@@ -13,8 +13,7 @@ Binaries are currently not officially distributed for this program, so it will n
     * libvncserver
 2. Navigate to where you want to store the source code
 3. Clone the repository with `git clone https://github.com/WhirlwindOfLight/HardwareVNC.git`
-4. Enter the code directory with `cd HardwareVNC/src`
-5. Build the program with `make`
+4. Build the program with `make`
 
 ## Usage
 1. Make sure [the controller program](https://github.com/WhirlwindOfLight/VM-Controller) is running and a capture card is connected to the desired GPU
