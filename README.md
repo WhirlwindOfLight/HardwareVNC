@@ -17,7 +17,7 @@ Binaries are currently not officially distributed for this program, so it will n
 
 ## Usage
 1. Make sure [the controller program](https://github.com/WhirlwindOfLight/VM-Controller) is running and a capture card is connected to the desired GPU
-2. Create a config file following the format in `templates/hardwareVncServer.conf`
+2. Create a config file following the format in `templates/config.yaml`
 3. Either directly or using a systemd service, run the program: `hardwareVncServer <config file>`
 4. Connect to the server with any VNC client software using `listen-port` as defined in your config file
 
