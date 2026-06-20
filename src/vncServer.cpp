@@ -19,7 +19,7 @@
 Point res = {};
 Point curPos = {};
 rfbScreenInfoPtr rfbScreen;
-int sockfd1, sockfd2, sockfd3;
+int controllerSocket;
 
 struct Rect {
     Point topLeftCorner;
@@ -146,16 +146,16 @@ static void dokey(rfbBool down,rfbKeySym key,rfbClientPtr cl) {
     static struct ModifierKeys modKeys = {};
     unsigned char regByte = keyToByte(key);
     if (parseModKeys(&modKeys, down, key) || (down && regByte != 0x00)) {
-        unsigned char output[BYTES_PER_KEY * 2 + 5];
+        unsigned char kbdBuffer[BYTES_PER_KEY * 2 + 5];
         unsigned char modByte = modKeyToByte(modKeys, needsShift(key));
-        myKeyboard(output, modByte, regByte);
+        myKeyboard(kbdBuffer, modByte, regByte);
 
-        write(sockfd3, output, sizeof(output));
+        write(controllerSocket, kbdBuffer, sizeof(kbdBuffer));
 
         /*
         cout << endl;
         for (int i = 0; i < BYTES_PER_KEY * 2 + 5; i++) {
-            cout << "0x" << hex << (int)output[i] << " ";
+            cout << "0x" << hex << (int)kbdBuffer[i] << " ";
         }
         cout << endl;
         */
@@ -171,13 +171,13 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
     curPos.x = x;
     curPos.y = y;
 
-    unsigned char tempA[BYTES_PER_REL * 2 + 5];
-    unsigned char tempB[BYTES_PER_ABS * 2 + 5];
-    unsigned char* output[] = {tempA, tempB};
+    unsigned char relBuffer[BYTES_PER_REL * 2 + 5];
+    unsigned char absBuffer[BYTES_PER_ABS * 2 + 5];
+    unsigned char* mouseBuffer[] = {relBuffer, absBuffer};
 
-    myMouse(output, buttonMask, curPos, oldPos, res);
-    write(sockfd1, tempA, sizeof(tempA));
-    write(sockfd2, tempB, sizeof(tempB));
+    myMouse(mouseBuffer, buttonMask, curPos, oldPos, res);
+    write(controllerSocket, relBuffer, sizeof(relBuffer));
+    write(controllerSocket, absBuffer, sizeof(absBuffer));
 
     oldPos = curPos;
     if (!ConfigVars::getBool("use-camera"))
@@ -269,10 +269,7 @@ int main(int argc, char** argv) {
     Frame oldFrame = myFrame;
 
     cout << "Creating connections to controller on socket " << ConfigVars::getString("controller-ip") << ":" << ConfigVars::getInt("controller-port") << "..." << endl;
-    initSock(&sockfd1);
-    sockfd3 = sockfd2 = sockfd1;
-    //initSock(&sockfd2);
-    //initSock(&sockfd3);
+    initSock(&controllerSocket);
     cout << "Connected to controller" << endl;
 
     rfbInitServer(rfbScreen);
@@ -338,9 +335,7 @@ int main(int argc, char** argv) {
         rfbRunEventLoop(rfbScreen,40000,FALSE);
     }
 
-    close(sockfd1);
-    close(sockfd2);
-    close(sockfd3);
+    close(controllerSocket);
 
     if (ConfigVars::getBool("use-camera")) {
     	delete w;
