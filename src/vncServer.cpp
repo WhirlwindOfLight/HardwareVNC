@@ -14,6 +14,7 @@
 #define SA struct sockaddr
 #define RFB_BPP 4
 #define CAM_BPP 3
+#define PROGRAM_NAME "hardware-vnc"
 
 Point res = {};
 Point curPos = {};
@@ -183,7 +184,7 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
         rfbProcessEvents(rfbScreen,rfbScreen->deferUpdateTime*1000);
 }
 
-fs::path getDefaultConfigPath(const char* programName) {
+fs::path getDefaultConfigPath() {
     fs::path config_dir;
 
     bool autoResolveFailed = false;
@@ -216,19 +217,18 @@ fs::path getDefaultConfigPath(const char* programName) {
         std::cerr << "[Warn] Could not resolve HOME. Loading config.yaml from current directory." << std::endl;
         return fs::current_path() / "config.yaml";
     } else {
-        return config_dir / programName / "config.yaml";
+        return config_dir / PROGRAM_NAME / "config.yaml";
     }
 }
 
 int main(int argc, char** argv) {
-    auto programName = argv[0];
     if (argc > 2) {
-        cout << "Usage: " << programName << " <configFile>" << endl;
+        cout << "Usage: " << argv[0] << " <configFile>" << endl;
         return 1;
     } else if (argc == 2) {
         ConfigVars::load(argv[1]);
     } else {
-        ConfigVars::load(getDefaultConfigPath(programName));
+        ConfigVars::load(getDefaultConfigPath());
     }
     res = {ConfigVars::getInt("camera-resX"), ConfigVars::getInt("camera-resY")};
 
