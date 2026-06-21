@@ -5,7 +5,7 @@
 #include "stdDecls.h"
 
 struct Pixel {
-    unsigned char r, g, b;
+    Byte r, g, b;
 };
 
 class Frame {
@@ -17,7 +17,7 @@ public:
 
     Pixel& getPixel(int x, int y);
     const Pixel& getPixel(int x, int y) const;
-    unsigned char* getRawData();
+    Byte* getRawData();
 
 private:
     int width;

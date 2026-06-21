@@ -103,7 +103,7 @@ RelMouseBytes initRelMouseBytes(MouseButton onBtns, Point curPos, Point oldPos, 
     return temp;
 }
 
-void myMouse(unsigned char* output[2], int btns, Point curPos, Point oldPos, Point maxPos) {
+void myMouse(Byte* output[2], int btns, Point curPos, Point oldPos, Point maxPos) {
     MouseButton onBtns = btnMaskToStruct(btns);
     RelMouseBytes rel = initRelMouseBytes(onBtns, curPos, oldPos, ConfigVars::getBool("use-rel-mouse"));
     AbsMouseBytes abs = initAbsMouseBytes(onBtns, curPos, maxPos, !ConfigVars::getBool("use-rel-mouse"));

@@ -11,7 +11,7 @@ struct ModifierKeys {
     bool ctrl, shift, alt, super;
 };
 
-void myKeyboard(unsigned char msg[], unsigned char modKeyByte, unsigned char regKeyByte);
+void myKeyboard(Byte msg[], Byte modKeyByte, Byte regKeyByte);
 bool parseModKeys(ModifierKeys* modKeysPtr, rfbBool down, rfbKeySym key);
 Byte modKeyToByte(ModifierKeys modKeys, bool needsShift);
 bool needsShift(rfbKeySym key);

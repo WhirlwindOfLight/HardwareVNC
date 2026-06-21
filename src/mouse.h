@@ -10,6 +10,6 @@ struct Point {
     int x, y;
 };
 
-void myMouse(unsigned char* tempC[2], int buttonMask, Point curPos, Point oldPos, Point maxPos);
+void myMouse(Byte* tempC[2], int buttonMask, Point curPos, Point oldPos, Point maxPos);
 
 #endif // MOUSE_H

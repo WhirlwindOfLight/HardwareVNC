@@ -54,7 +54,7 @@ void initSock(int* sockfd) {
    
 }
 
-static void initBuffer(unsigned char* buffer) {
+static void initBuffer(Byte* buffer) {
     Pixel a = {0xff, 0x00, 0xff}; //magenta
     Pixel b = {0x00, 0x00, 0x00}; //black
     for (int row = 0; row < res.y; row++) {
@@ -76,7 +76,7 @@ static void initBuffer(unsigned char* buffer) {
     }
 }
 
-static void cameraFrameToRfb(unsigned char* rfbBuffer, Frame* cameraFrame) {
+static void cameraFrameToRfb(Byte* rfbBuffer, Frame* cameraFrame) {
     cv::Mat src(res.y, res.x, CV_8UC3, cameraFrame->getRawData());
     cv::Mat dest(res.y, res.x, CV_8UC4, rfbBuffer);
     cv::cvtColor(src, dest, cv::COLOR_RGB2RGBA);
@@ -137,10 +137,10 @@ vector<Rect> detectRectangles(const bool* boolArray, int rows, int cols, double 
 
 static void dokey(rfbBool down,rfbKeySym key,rfbClientPtr cl) {
     static struct ModifierKeys modKeys = {};
-    unsigned char regByte = keyToByte(key);
+    Byte regByte = keyToByte(key);
     if (parseModKeys(&modKeys, down, key) || (down && regByte != 0x00)) {
-        unsigned char kbdBuffer[BYTES_PER_KEY * 2 + 5];
-        unsigned char modByte = modKeyToByte(modKeys, needsShift(key));
+        Byte kbdBuffer[BYTES_PER_KEY * 2 + 5];
+        Byte modByte = modKeyToByte(modKeys, needsShift(key));
         myKeyboard(kbdBuffer, modByte, regByte);
         if (ConfigVars::getBool("use-controller")) {
             write(controllerSocket, kbdBuffer, sizeof(kbdBuffer));
@@ -163,9 +163,9 @@ static void doptr(int buttonMask,int x,int y,rfbClientPtr cl)
     curPos.x = x;
     curPos.y = y;
 
-    unsigned char relBuffer[BYTES_PER_REL * 2 + 5];
-    unsigned char absBuffer[BYTES_PER_ABS * 2 + 5];
-    unsigned char* mouseBuffer[] = {relBuffer, absBuffer};
+    Byte relBuffer[BYTES_PER_REL * 2 + 5];
+    Byte absBuffer[BYTES_PER_ABS * 2 + 5];
+    Byte* mouseBuffer[] = {relBuffer, absBuffer};
 
     myMouse(mouseBuffer, buttonMask, curPos, oldPos, res);
     if (ConfigVars::getBool("use-controller")) {
@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
     rfbScreen->port = ConfigVars::getInt("listen-port");
     rfbScreen->ipv6port = ConfigVars::getInt("listen-port");
 
-    initBuffer((unsigned char*)rfbScreen->frameBuffer);
+    initBuffer((Byte*)rfbScreen->frameBuffer);
     rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);
     Webcam* w;
     Frame myFrame(res.x, res.y);
@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
             }
         }
         myFrame = w->GetLastFrame();
-        cameraFrameToRfb((unsigned char*)rfbScreen->frameBuffer, &myFrame);
+        cameraFrameToRfb((Byte*)rfbScreen->frameBuffer, &myFrame);
     }
     Frame oldFrame = myFrame;
 
@@ -292,7 +292,7 @@ int main(int argc, char** argv) {
             if (w->isNewFrame()) {
             	//Capture the most recent frame
                 myFrame = w->GetLastFrame();
-                cameraFrameToRfb((unsigned char*)rfbScreen->frameBuffer, &myFrame);
+                cameraFrameToRfb((Byte*)rfbScreen->frameBuffer, &myFrame);
                 
                 if (!ConfigVars::getBool("use-diff-frames")) {
                     rfbMarkRectAsModified(rfbScreen, 0, 0, res.x, res.y);

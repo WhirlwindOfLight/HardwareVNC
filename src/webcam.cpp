@@ -10,9 +10,9 @@ int Frame::getHeight() const {
     return height;
 }
 
-unsigned char* Frame::getRawData() {
+Byte* Frame::getRawData() {
     // Returns a pointer to the start of the underlying array
-    return reinterpret_cast<unsigned char*>(this->pixels.data());
+    return reinterpret_cast<Byte*>(this->pixels.data());
 }
 
 Pixel& Frame::getPixel(int x, int y) {
