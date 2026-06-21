@@ -77,16 +77,9 @@ static void initBuffer(unsigned char* buffer) {
 }
 
 static void cameraFrameToRfb(unsigned char* rfbBuffer, Frame* cameraFrame) {
-    for (int row = 0; row < res.y; row++) {
-        for (int col = 0; col < res.x; col++) {
-            if ((row*res.x+col)*CAM_BPP+2 < (cameraFrame->getWidth() * cameraFrame->getHeight() * CAM_BPP)) {
-                rfbBuffer[(row*res.x+col)*RFB_BPP+0] = cameraFrame->getPixel(col, row).r;
-                rfbBuffer[(row*res.x+col)*RFB_BPP+1] = cameraFrame->getPixel(col, row).g;
-                rfbBuffer[(row*res.x+col)*RFB_BPP+2] = cameraFrame->getPixel(col, row).b;
-                rfbBuffer[(row*res.x+col)*RFB_BPP+3] = 0;
-            }
-        }
-    }
+    cv::Mat src(res.y, res.x, CV_8UC3, cameraFrame->getRawData());
+    cv::Mat dest(res.y, res.x, CV_8UC4, rfbBuffer);
+    cv::cvtColor(src, dest, cv::COLOR_RGB2RGBA);
 }
 
 int pixelDiff(Pixel* pixA, Pixel* pixB) {

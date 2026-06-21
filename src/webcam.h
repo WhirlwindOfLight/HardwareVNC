@@ -17,6 +17,7 @@ public:
 
     Pixel& getPixel(int x, int y);
     const Pixel& getPixel(int x, int y) const;
+    unsigned char* getRawData();
 
 private:
     int width;

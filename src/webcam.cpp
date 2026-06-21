@@ -10,6 +10,11 @@ int Frame::getHeight() const {
     return height;
 }
 
+unsigned char* Frame::getRawData() {
+    // Returns a pointer to the start of the underlying array
+    return reinterpret_cast<unsigned char*>(this->pixels.data());
+}
+
 Pixel& Frame::getPixel(int x, int y) {
     return pixels[y * width + x];
 }
@@ -65,41 +70,42 @@ void Webcam::CaptureFrames() {
     capture.set(cv::CAP_PROP_FRAME_WIDTH, resolutionX);
     capture.set(cv::CAP_PROP_FRAME_HEIGHT, resolutionY);
 
-    cv::Mat cvFrame;
-    capture.read(cvFrame);
+    {
+        cv::Mat testFrame;
+        capture.read(testFrame);
 
-    if (cvFrame.empty()) {
-        // Stop attempting to capture frames and let the main thread handle things accordingly
-        isRunning = false;
-        capture.release();
-        return;
-    }
+        if (testFrame.empty()) {
+            // Stop attempting to capture frames and let the main thread handle things accordingly
+            isRunning = false;
+            capture.release();
+            return;
+        }
 
-    if (cvFrame.cols != resolutionX || cvFrame.rows != resolutionY) {
-        std::cerr << "[Err] Camera capture rejected the requested resolution.\n"
-              << "Requested: " << resolutionX << "x" << resolutionY << "\n"
-              << "Received:  " << cvFrame.cols << "x" << cvFrame.rows << "\n"
-              << "Aborting to prevent buffer overflow.\n";
-        
-        exit(1);
+        if (testFrame.cols != resolutionX || testFrame.rows != resolutionY) {
+            std::cerr << "[Warn] Camera capture rejected the requested resolution.\n"
+                      << "| Requested: " << resolutionX << "x" << resolutionY << "\n"
+                      << "| Received:  " << testFrame.cols << "x" << testFrame.rows << "\n";
+        }
     }
 
     Frame frame(resolutionX, resolutionY);
+    cv::Mat cvFrameWrap(
+        resolutionY,
+        resolutionX,
+        CV_8UC3,
+        frame.getRawData()
+    );
     while (isRunning) {
         auto startTime = steady_clock::now();
 
-        capture.read(cvFrame);
-        if (cvFrame.empty())
-            break;
+        cv::Mat capturedFrame;
+        capture.read(capturedFrame);
+        if (capturedFrame.empty()) break;
 
-        for (int y = 0; y < resolutionY; ++y) {
-            for (int x = 0; x < resolutionX; ++x) {
-                cv::Vec3b bgr = cvFrame.at<cv::Vec3b>(y, x);
-                frame.getPixel(x, y).r = bgr[2];
-                frame.getPixel(x, y).g = bgr[1];
-                frame.getPixel(x, y).b = bgr[0];
-            }
+        if (capturedFrame.cols != resolutionX || capturedFrame.rows != resolutionY) {
+            cv::resize(capturedFrame, capturedFrame, cv::Size(resolutionX, resolutionY));
         }
+        cv::cvtColor(capturedFrame, cvFrameWrap, cv::COLOR_BGR2RGB);
 
         {
             lock_guard<mutex> lock(frameMutex);
