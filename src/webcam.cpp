@@ -65,11 +65,29 @@ void Webcam::CaptureFrames() {
     capture.set(cv::CAP_PROP_FRAME_WIDTH, resolutionX);
     capture.set(cv::CAP_PROP_FRAME_HEIGHT, resolutionY);
 
+    cv::Mat cvFrame;
+    capture.read(cvFrame);
+
+    if (cvFrame.empty()) {
+        // Stop attempting to capture frames and let the main thread handle things accordingly
+        isRunning = false;
+        capture.release();
+        return;
+    }
+
+    if (cvFrame.cols != resolutionX || cvFrame.rows != resolutionY) {
+        std::cerr << "[Err] Camera capture rejected the requested resolution.\n"
+              << "Requested: " << resolutionX << "x" << resolutionY << "\n"
+              << "Received:  " << cvFrame.cols << "x" << cvFrame.rows << "\n"
+              << "Aborting to prevent buffer overflow.\n";
+        
+        exit(1);
+    }
+
     Frame frame(resolutionX, resolutionY);
     while (isRunning) {
         auto startTime = steady_clock::now();
 
-        cv::Mat cvFrame;
         capture.read(cvFrame);
         if (cvFrame.empty())
             break;
